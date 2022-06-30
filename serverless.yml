@@ -1,0 +1,122 @@
+service: rockset-financial-demo
+
+frameworkVersion: '3'
+
+custom:
+  rocksetAccountId: 'ROCKSET-ACCOUNT-ID'
+  externalId: 'YOUR-ROCKSET-EXTERNAL-ID'
+  rocksetApiKey: 'YOUR-ROCKSET-API-KEY'
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  environment:
+    TABLE_NAME: !Ref TransactionsTable
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+    ROCKSET_API_KEY: ${self:custom.rocksetApiKey}
+  iam:
+    role:
+      statements:
+        - Effect: 'Allow'
+          Action:
+            - 'dynamodb:GetItem'
+            - 'dynamodb:PutItem'
+            - 'dynamodb:Query'
+          Resource: !GetAtt 'TransactionsTable.Arn'
+
+functions:
+  recordTransaction:
+    handler: src/handlers/recordTransaction.handler
+    events:
+      - http: POST /transactions
+  fetchTransactionFeed:
+    handler: src/handlers/fetchTransactionFeed.handler
+    events:
+      - http: GET /transactions
+  fetchTransaction:
+    handler: src/handlers/fetchTransaction.handler
+    events:
+      - http: GET /transactions/{transactionId}
+  filterTransactions:
+    handler: src/handlers/filterTransactions.handler
+    events:
+      - http: GET /filterTransactions
+  transactionsByCategory:
+    handler: src/handlers/transactionsByCategory.handler
+    events:
+      - http: GET /transactionsByCategory
+
+resources:
+  Resources:
+    TransactionsTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+          AttributeDefinitions:
+            - AttributeName: "organization"
+              AttributeType: "S"
+            - AttributeName: "transactionId"
+              AttributeType: "S"
+          KeySchema:
+            - AttributeName: "organization"
+              KeyType: "HASH"
+            - AttributeName: "transactionId"
+              KeyType: "RANGE"
+          BillingMode: 'PAY_PER_REQUEST'
+
+  #   Uncomment lines 71 - 122 below to create resources for integrating with Rockset.
+  # 
+  #   Before uncommenting, be sure to update the externalId and rocksetAccountId properties
+  #     in the `custom` block above.
+  #
+  #   RocksetExportBucket:
+  #     Type: "AWS::S3::Bucket"
+  #   RocksetIAMRole:
+  #     Type: "AWS::IAM::Role"
+  #     Properties:
+  #       AssumeRolePolicyDocument:
+  #         Statement:
+  #           - Action: "sts:AssumeRole"
+  #             Condition:
+  #               StringEquals:
+  #                 "sts:ExternalId": ${self:custom.externalId}
+  #             Effect: Allow
+  #             Principal:
+  #               AWS: ${self:custom.rocksetAccountId}
+  #         Version: "2012-10-17"
+  #   RocksetIAMPolicy:
+  #     Type: "AWS::IAM::Policy"
+  #     Properties:
+  #       PolicyName: RocksetIngestPolicy
+  #       PolicyDocument:
+  #         Version: "2012-10-17"
+  #         Statement:
+  #           - Effect: Allow
+  #             Action:
+  #               - "dynamodb:GetShardIterator"
+  #               - "dynamodb:Scan"
+  #               - "dynamodb:DescribeStream"
+  #               - "dynamodb:DescribeExport"
+  #               - "dynamodb:GetRecords"
+  #               - "dynamodb:DescribeTable"
+  #               - "dynamodb:DescribeContinuousBackups"
+  #               - "dynamodb:ExportTableToPointInTime"
+  #               - "dynamodb:UpdateTable"
+  #               - "dynamodb:UpdateContinuousBackups"
+  #               - "s3:PutObject"
+  #               - "s3:GetObject"
+  #               - "s3:ListBucket"
+  #             Resource:
+  #               - !Sub "arn:aws:dynamodb:*:*:table/${TransactionsTable}"
+  #               - !Sub "arn:aws:dynamodb:*:*:table/${TransactionsTable}/stream/*"
+  #               - !Sub "arn:aws:dynamodb:*:*:table/${TransactionsTable}/export/*"
+  #               - !Sub "arn:aws:s3:::${RocksetExportBucket}"
+  #               - !Sub "arn:aws:s3:::${RocksetExportBucket}/*"
+  #       Roles:
+  #         - !Ref RocksetIAMRole
+  # Outputs:
+  #   RocksetExportBucketName:
+  #    Value: !Ref RocksetExportBucket
+  #   RocksetIAMRoleArn:
+  #    Value: !GetAtt RocksetIAMRole.Arn
+  #   TransactionsTableName:
+  #    Value: !Ref TransactionsTable
