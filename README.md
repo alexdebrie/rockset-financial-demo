@@ -15,6 +15,12 @@ To understand the application and the fundamental concepts further, check out th
   - [Configure a Query Lambda in Rockset](#configuring-a-query-lambda-in-rockset)
 - [Clean up](#clean-up)
 
+In addition to the walkthrough instructions in this README, you can review the READMEs for the various modules to understand how they work:
+
+- [Handlers](./src/handlers/)
+- [Transaction Service](./src/transactions/)
+- [Clients](./src/clients/)
+
 ## Usage
 
 This application is a serverless application using Rockset, DynamoDB, AWS Lambda, and AWS API Gateway. It is deployed using the [Serverless Framework](https://www.serverless.com/).
