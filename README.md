@@ -127,13 +127,29 @@ Our DynamoDB integration allows Rockset to access our DynamoDB table. Now we nee
 
 Navigate to the [Collections section](https://console.rockset.com/collections/new?selected=dynamodb) of the Rockset console to create a new DynamoDB collection. Select your newly created 'FinTech' integration and click Start.
 
-Give your collection a name of 'FinTech' and keep it in the 'commons' collection for now.
+Give your collection a name of 'Transactions' and keep it in the 'commons' collection for now.
 
 You will need to enter the table name of your DynamoDB table for the collection. From the output of the `sls info --verbose` command, find the value for `TransactionsTableName`. Paste that value into the DynamoDB Table Name configuration.
 
 ![Rockset Collection Creation](https://user-images.githubusercontent.com/6509926/176748119-491327ad-e72c-499e-98e9-b022cb1d8594.png)
 
 You will also need to select the AWS region for your DynamoDB table.
+
+By default, Rockset will infer types for your incoming data. However, sometimes it can be helpful to give Rockset hints on the type of data it can expect in your data.
+
+We want to tell Rockset that the `transactionTime` field is a timestamp that can be parsed as a datetime. In the `Configure Ingest` section, click the `Construct SQL Transformation` option to add a transformation step.
+
+In the transformation editor, enter the following SQL query:
+
+```sql
+SELECT
+  *,
+  CAST(transactionTime AS datetime) AS transactionTime
+FROM
+  _input
+```
+
+This tells Rockset to cast the `transactionTime` field from a string to a datetime. Once you are finished, click `Apply` to save the transformation.
 
 The other default configuration should work. Head to the bottom and click Create.
 
@@ -163,19 +179,19 @@ SELECT
     EXTRACT(
         month
         FROM
-            PARSE_DATETIME_ISO8601(transactionTime)
+            transactionTime
     ) as month,
     EXTRACT(
         year
         FROM
-            PARSE_DATETIME_ISO8601(transactionTime)
+            transactionTime
     ) as year,
     TRUNCATE(sum(amount), 2) AS amount
 FROM
     Transactions
 WHERE
     organization = :organization
-    AND PARSE_DATETIME_ISO8601(transactionTime) > CURRENT_TIMESTAMP() - INTERVAL 3 MONTH
+    AND transactionTime > CURRENT_TIMESTAMP() - INTERVAL 3 MONTH
 GROUP BY
     category,
     month,
